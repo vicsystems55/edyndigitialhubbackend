@@ -1,0 +1,198 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AdminRole {
+  SUPER_ADMIN
+  ADMIN
+  EDITOR
+}
+
+enum BookStatus {
+  DRAFT
+  COMING_SOON
+  PUBLISHED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum MessageStatus {
+  UNREAD
+  READ
+  RESOLVED
+  SPAM
+}
+
+enum SubscriberStatus {
+  ACTIVE
+  UNSUBSCRIBED
+  BOUNCED
+}
+
+model AdminProfile {
+  id           String     @id @default(uuid()) @db.Uuid
+  authUserId   String     @unique @db.Uuid
+  email        String     @unique
+  displayName  String?
+  role         AdminRole  @default(ADMIN)
+  active       Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  auditEntries AuditLog[]
+
+  @@index([active])
+}
+
+model Book {
+  id               String     @id @default(uuid()) @db.Uuid
+  slug             String     @unique
+  title            String
+  subtitle         String?
+  author           String
+  shortDescription String?
+  synopsis         String?
+  coverUrl         String?
+  ebookStoragePath String?
+  priceMinor       Int?
+  currency         String     @default("NGN") @db.VarChar(3)
+  status           BookStatus @default(DRAFT)
+  featured         Boolean    @default(false)
+  purchasesEnabled Boolean    @default(false)
+  downloadsEnabled Boolean    @default(false)
+  publishedAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  orders           Order[]
+
+  @@index([status, featured])
+  @@index([publishedAt])
+}
+
+model Order {
+  id                    String          @id @default(uuid()) @db.Uuid
+  reference             String          @unique
+  customerName          String?
+  customerEmail         String
+  bookId                String          @db.Uuid
+  amountMinor           Int
+  currency              String          @default("NGN") @db.VarChar(3)
+  status                OrderStatus     @default(PENDING)
+  paystackTransactionId String?
+  paidAt                DateTime?
+  createdAt             DateTime        @default(now())
+  updatedAt             DateTime        @updatedAt
+  book                  Book            @relation(fields: [bookId], references: [id], onDelete: Restrict)
+  paymentEvents         PaymentEvent[]
+  downloadGrants        DownloadGrant[]
+
+  @@index([customerEmail])
+  @@index([bookId, status])
+  @@index([createdAt])
+}
+
+model PaymentEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  eventKey    String    @unique
+  eventType   String
+  reference   String?
+  orderId     String?   @db.Uuid
+  payload     Json
+  processed   Boolean   @default(false)
+  processedAt DateTime?
+  createdAt   DateTime  @default(now())
+  order       Order?    @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([reference])
+  @@index([processed, createdAt])
+}
+
+model DownloadGrant {
+  id             String    @id @default(uuid()) @db.Uuid
+  orderId        String    @db.Uuid
+  tokenHash      String    @unique
+  expiresAt      DateTime
+  maxDownloads   Int       @default(3)
+  downloadCount  Int       @default(0)
+  lastDownloadAt DateTime?
+  revokedAt      DateTime?
+  createdAt      DateTime  @default(now())
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([expiresAt])
+}
+
+model ContactMessage {
+  id         String        @id @default(uuid()) @db.Uuid
+  name       String
+  email      String
+  business   String?
+  service    String?
+  budget     String?
+  message    String
+  status     MessageStatus @default(UNREAD)
+  adminNotes String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+model NewsletterSubscriber {
+  id             String           @id @default(uuid()) @db.Uuid
+  email          String           @unique
+  name           String?
+  status         SubscriberStatus @default(ACTIVE)
+  source         String?
+  subscribedAt   DateTime         @default(now())
+  unsubscribedAt DateTime?
+  updatedAt      DateTime         @updatedAt
+
+  @@index([status, subscribedAt])
+}
+
+model PageView {
+  id          String   @id @default(uuid()) @db.Uuid
+  path        String
+  sessionHash String?
+  referrer    String?
+  userAgent   String?
+  viewedAt    DateTime @default(now())
+
+  @@index([path, viewedAt])
+  @@index([sessionHash, viewedAt])
+}
+
+model SiteSetting {
+  key         String   @id
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model AuditLog {
+  id           String        @id @default(uuid()) @db.Uuid
+  adminId      String?       @db.Uuid
+  action       String
+  resourceType String
+  resourceId   String?
+  metadata     Json?
+  createdAt    DateTime      @default(now())
+  admin        AdminProfile? @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([adminId, createdAt])
+  @@index([resourceType, resourceId])
+}

@@ -1,0 +1,41 @@
+import { beforeAll, describe, expect, it, vi } from 'vitest'
+import request from 'supertest'
+
+beforeAll(() => {
+  vi.stubEnv('NODE_ENV', 'test')
+  vi.stubEnv('PORT', '5001')
+  vi.stubEnv('APP_NAME', 'Edyn Digital Hub API Test')
+  vi.stubEnv('API_PREFIX', '/api/v1')
+  vi.stubEnv('CLIENT_URL', 'http://localhost:5173')
+  vi.stubEnv('CORS_ORIGINS', 'http://localhost:5173')
+  vi.stubEnv('DATABASE_URL', 'postgresql://test:test@localhost:5432/test')
+  vi.stubEnv('DIRECT_URL', 'postgresql://test:test@localhost:5432/test')
+  vi.stubEnv('SUPABASE_URL', 'https://example.supabase.co')
+  vi.stubEnv('SUPABASE_PUBLISHABLE_KEY', 'test-publishable-key')
+  vi.stubEnv('SUPABASE_SECRET_KEY', 'test-secret-key')
+  vi.stubEnv('SUPABASE_EBOOK_BUCKET', 'ebooks-test')
+  vi.stubEnv('PAYSTACK_SECRET_KEY', 'sk_test_example')
+  vi.stubEnv('PAYSTACK_BASE_URL', 'https://api.paystack.co')
+  vi.stubEnv('PAYSTACK_CALLBACK_URL', 'http://localhost:5173/payment/callback')
+  vi.stubEnv('DOWNLOAD_TOKEN_SECRET', 'test-secret-that-is-at-least-32-characters')
+})
+
+describe('API application', () => {
+  it('returns service health', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app).get('/api/v1/health')
+
+    expect(response.status).toBe(200)
+    expect(response.body.success).toBe(true)
+    expect(response.body.data.status).toBe('ok')
+  })
+
+  it('returns a structured 404 response', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app).get('/api/v1/missing')
+
+    expect(response.status).toBe(404)
+    expect(response.body.success).toBe(false)
+    expect(response.body.requestId).toBeTypeOf('string')
+  })
+})

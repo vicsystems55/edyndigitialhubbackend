@@ -1,0 +1,52 @@
+services:
+  - type: web
+    name: edyn-digital-hub-api
+    runtime: node
+    plan: starter
+    rootDir: .
+    buildCommand: npm ci && npm run prisma:generate && npm run build
+    preDeployCommand: npm run prisma:migrate:deploy
+    startCommand: npm start
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_VERSION
+        value: 22.18.0
+      - key: NODE_ENV
+        value: production
+      - key: APP_NAME
+        value: Edyn Digital Hub API
+      - key: API_PREFIX
+        value: /api/v1
+      - key: PORT
+        value: 10000
+      - key: CLIENT_URL
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_PUBLISHABLE_KEY
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_EBOOK_BUCKET
+        value: ebooks
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_BASE_URL
+        value: https://api.paystack.co
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false
+      - key: DOWNLOAD_TOKEN_SECRET
+        generateValue: true
+      - key: EBOOK_LINK_TTL_SECONDS
+        value: 900
+      - key: MAX_EBOOK_DOWNLOADS
+        value: 3
+      - key: CONTACT_NOTIFICATION_EMAIL
+        sync: false

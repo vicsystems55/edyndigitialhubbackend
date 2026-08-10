@@ -38,4 +38,23 @@ describe('API application', () => {
     expect(response.body.success).toBe(false)
     expect(response.body.requestId).toBeTypeOf('string')
   })
+
+  it('rejects malformed administrator login input', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/admin/auth/login')
+      .send({ email: 'not-an-email', password: 'short' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+    expect(response.body.error.message).toBe('Enter a valid email address and password')
+  })
+
+  it('protects the administrator profile endpoint', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app).get('/api/v1/admin/auth/me')
+
+    expect(response.status).toBe(401)
+    expect(response.body.success).toBe(false)
+  })
 })

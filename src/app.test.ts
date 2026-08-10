@@ -57,4 +57,15 @@ describe('API application', () => {
     expect(response.status).toBe(401)
     expect(response.body.success).toBe(false)
   })
+
+  it('allows Vite development origins when the local port changes', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .options('/api/v1/admin/auth/login')
+      .set('Origin', 'http://localhost:5174')
+      .set('Access-Control-Request-Method', 'POST')
+
+    expect(response.status).toBe(204)
+    expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5174')
+  })
 })

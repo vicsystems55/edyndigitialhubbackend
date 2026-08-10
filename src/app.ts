@@ -9,6 +9,22 @@ import { apiRouter } from './routes/index.js'
 
 export const app = express()
 
+function isAllowedOrigin(origin: string | undefined) {
+  if (!origin || env.CORS_ORIGINS.includes(origin)) return true
+
+  if (env.NODE_ENV !== 'production') {
+    try {
+      const url = new URL(origin)
+      return ['localhost', '127.0.0.1'].includes(url.hostname)
+        && ['http:', 'https:'].includes(url.protocol)
+    } catch {
+      return false
+    }
+  }
+
+  return false
+}
+
 app.disable('x-powered-by')
 app.set('trust proxy', 1)
 
@@ -16,7 +32,7 @@ app.use(requestId)
 app.use(helmet())
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || env.CORS_ORIGINS.includes(origin)) return callback(null, true)
+    if (isAllowedOrigin(origin)) return callback(null, true)
     callback(new Error('Origin is not allowed by CORS'))
   },
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

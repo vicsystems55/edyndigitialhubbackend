@@ -44,6 +44,18 @@ async function seedDefaultAdmin() {
       throw new Error(`Unable to create the default Supabase Auth user: ${error?.message || 'Unknown error'}`)
     }
     authUser = data.user
+  } else {
+    const { data, error } = await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
+      email: seedAdminEmail,
+      password: seedAdminPassword,
+      email_confirm: true,
+      user_metadata: { display_name: 'Edyn Administrator' },
+    })
+
+    if (error || !data.user) {
+      throw new Error(`Unable to synchronize the default Supabase Auth user: ${error?.message || 'Unknown error'}`)
+    }
+    authUser = data.user
   }
 
   await prisma.adminProfile.upsert({

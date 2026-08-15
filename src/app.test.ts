@@ -90,6 +90,21 @@ describe('API application', () => {
     expect(response.body.success).toBe(false)
   })
 
+  it('accepts only Paystack as the checkout provider', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/payments/initialize')
+      .send({
+        bookSlug: 'the-healthy-you',
+        customerName: 'Test Customer',
+        customerEmail: 'customer@example.com',
+        paymentProvider: 'stripe',
+      })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+  })
+
   it('rejects Paystack webhooks with an invalid signature', async () => {
     const { app } = await import('./app.js')
     const response = await request(app)

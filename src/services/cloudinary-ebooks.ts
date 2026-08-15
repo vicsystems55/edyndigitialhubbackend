@@ -1,6 +1,7 @@
 import type { UploadApiResponse } from 'cloudinary'
 import { env } from '../config/env.js'
 import { requireCloudinaryConfiguration } from '../config/cloudinary.js'
+import { ApiError } from '../middleware/error-handler.js'
 
 export type EbookAsset = {
   publicId: string
@@ -14,7 +15,7 @@ export function uploadEbook(buffer: Buffer, originalName: string, slug: string) 
   const cloudinary = requireCloudinaryConfiguration()
 
   return new Promise<EbookAsset>((resolve, reject) => {
-    const stream = cloudinary.uploader.upload_stream({
+    const stream = cloudinary.uploader.upload_chunked_stream({
       resource_type: 'raw',
       type: 'authenticated',
       upload_preset: env.CLOUDINARY_UPLOAD_PRESET,
@@ -22,9 +23,15 @@ export function uploadEbook(buffer: Buffer, originalName: string, slug: string) 
       public_id: `${slug}-${Date.now()}`,
       allowed_formats: ['pdf'],
       overwrite: false,
+      chunk_size: 6_000_000,
       tags: ['edyn-ebook', slug],
     }, (error, result) => {
-      if (error || !result) return reject(error || new Error('Cloudinary returned no upload result'))
+      if (error) {
+        const providerMessage = typeof error.message === 'string' ? error.message : 'Cloudinary rejected the upload'
+        const providerStatus = typeof error.http_code === 'number' && error.http_code < 500 ? error.http_code : 502
+        return reject(new ApiError(providerStatus, `Ebook upload failed: ${providerMessage}`))
+      }
+      if (!result) return reject(new ApiError(502, 'Ebook upload failed: Cloudinary returned no upload result'))
       const upload = result as UploadApiResponse
       resolve({
         publicId: upload.public_id,

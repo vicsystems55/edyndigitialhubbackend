@@ -15,6 +15,7 @@ const initializeSchema = z.object({
   bookSlug: z.string().min(1).max(100),
   customerName: z.string().trim().min(2).max(100),
   customerEmail: z.email().transform((value) => value.trim().toLowerCase()),
+  paymentProvider: z.literal('paystack').default('paystack'),
 })
 
 const paymentLimiter = rateLimit({
@@ -33,7 +34,10 @@ paymentsRouter.post('/initialize', paymentLimiter, async (request, response, nex
 
     const book = await prisma.book.findUnique({ where: { slug: parsed.data.bookSlug } })
     if (!book || book.status !== 'PUBLISHED') throw new ApiError(404, 'Publication was not found')
-    if (!book.purchasesEnabled || !book.priceMinor || book.priceMinor < 1) {
+    if (
+      !book.purchasesEnabled || !book.downloadsEnabled || !book.ebookAssetId
+      || !book.priceMinor || book.priceMinor < 1
+    ) {
       throw new ApiError(409, 'This publication is not currently available for online purchase')
     }
 

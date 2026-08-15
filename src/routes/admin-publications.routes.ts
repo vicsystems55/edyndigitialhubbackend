@@ -34,6 +34,10 @@ function routeParam(value: string | string[] | undefined, name: string) {
 
 function runUpload(request: Request, response: Response, next: NextFunction) {
   upload.single('ebook')(request, response, (error) => {
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      const maximumMb = Math.floor(env.CLOUDINARY_MAX_UPLOAD_BYTES / 1024 / 1024)
+      return next(new ApiError(413, `The ebook is too large. Maximum upload size is ${maximumMb} MB`))
+    }
     if (error) return next(new ApiError(400, error.message || 'PDF upload failed'))
     next()
   })
@@ -67,6 +71,9 @@ adminPublicationsRouter.patch('/:slug', async (request, response, next) => {
     }
     if (parsed.data.purchasesEnabled && !(parsed.data.priceMinor || existing.priceMinor)) {
       throw new ApiError(409, 'Set a valid price before enabling purchases')
+    }
+    if (parsed.data.purchasesEnabled && (!existing.ebookAssetId || parsed.data.downloadsEnabled === false)) {
+      throw new ApiError(409, 'Upload the ebook and enable downloads before enabling purchases')
     }
 
     const book = await prisma.book.update({ where: { id: existing.id }, data: parsed.data })

@@ -27,7 +27,7 @@ const environmentSchema = z.object({
   CLOUDINARY_UPLOAD_PRESET: z.string().default(''),
   CLOUDINARY_EBOOK_FOLDER: z.string().default('edyndigitalhub/ebooks'),
   CLOUDINARY_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(300),
-  CLOUDINARY_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(41_943_040),
+  CLOUDINARY_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().max(104_857_600).default(10_485_760),
   EBOOK_GRANT_TTL_DAYS: z.coerce.number().int().positive().max(365).default(30),
 })
 

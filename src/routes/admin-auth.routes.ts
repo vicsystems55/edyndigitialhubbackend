@@ -44,7 +44,12 @@ adminAuthRouter.post('/login', loginLimiter, async (request, response, next) => 
     const { data, error } = await auth.auth.signInWithPassword(parsed.data)
 
     // Keep this generic so callers cannot discover registered admin emails.
-    if (error || !data.user || !data.session) throw new ApiError(401, 'Invalid email or password')
+    if (error || !data.user || !data.session) {
+      if (process.env.NODE_ENV !== 'production' && error) {
+        console.warn('Supabase administrator login failed:', error.message)
+      }
+      throw new ApiError(401, 'Invalid email or password')
+    }
 
     const admin = await prisma.adminProfile.findUnique({
       where: { authUserId: data.user.id },

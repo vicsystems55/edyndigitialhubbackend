@@ -19,6 +19,7 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
         status: true,
         purchasesEnabled: true,
         downloadsEnabled: true,
+        ebookAssetId: true,
       },
     })
 
@@ -27,8 +28,19 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
     response.json({
       success: true,
       data: {
-        ...book,
-        canPurchase: book.purchasesEnabled && book.priceMinor !== null && book.priceMinor > 0,
+        slug: book.slug,
+        title: book.title,
+        subtitle: book.subtitle,
+        author: book.author,
+        shortDescription: book.shortDescription,
+        priceMinor: book.priceMinor,
+        currency: book.currency,
+        status: book.status,
+        purchasesEnabled: book.purchasesEnabled,
+        downloadsEnabled: book.downloadsEnabled,
+        paymentProvider: 'paystack',
+        canPurchase: book.purchasesEnabled && book.downloadsEnabled
+          && Boolean(book.ebookAssetId) && book.priceMinor !== null && book.priceMinor > 0,
       },
     })
   } catch (error) {

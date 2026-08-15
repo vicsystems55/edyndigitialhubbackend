@@ -58,6 +58,17 @@ describe('API application', () => {
     expect(response.body.success).toBe(false)
   })
 
+  it('protects publication and ebook management endpoints', async () => {
+    const { app } = await import('./app.js')
+    const listResponse = await request(app).get('/api/v1/admin/publications')
+    const uploadResponse = await request(app)
+      .post('/api/v1/admin/publications/the-healthy-you/ebook')
+      .attach('ebook', Buffer.from('%PDF-1.4 test'), 'test.pdf')
+
+    expect(listResponse.status).toBe(401)
+    expect(uploadResponse.status).toBe(401)
+  })
+
   it('allows Vite development origins when the local port changes', async () => {
     const { app } = await import('./app.js')
     const response = await request(app)
@@ -67,5 +78,26 @@ describe('API application', () => {
 
     expect(response.status).toBe(204)
     expect(response.headers['access-control-allow-origin']).toBe('http://localhost:5174')
+  })
+
+  it('rejects malformed payment initialization input', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/payments/initialize')
+      .send({ bookSlug: 'the-healthy-you', customerName: '', customerEmail: 'invalid' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+  })
+
+  it('rejects Paystack webhooks with an invalid signature', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/payments/webhook')
+      .set('x-paystack-signature', 'invalid-signature')
+      .send({ event: 'charge.success', data: {} })
+
+    expect(response.status).toBe(401)
+    expect(response.body.success).toBe(false)
   })
 })

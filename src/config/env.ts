@@ -21,6 +21,14 @@ const environmentSchema = z.object({
   EBOOK_LINK_TTL_SECONDS: z.coerce.number().int().positive().default(900),
   MAX_EBOOK_DOWNLOADS: z.coerce.number().int().positive().default(3),
   CONTACT_NOTIFICATION_EMAIL: z.union([z.email(), z.literal('')]).optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().default(''),
+  CLOUDINARY_API_KEY: z.string().default(''),
+  CLOUDINARY_API_SECRET: z.string().default(''),
+  CLOUDINARY_UPLOAD_PRESET: z.string().default(''),
+  CLOUDINARY_EBOOK_FOLDER: z.string().default('edyndigitalhub/ebooks'),
+  CLOUDINARY_DOWNLOAD_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(300),
+  CLOUDINARY_MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(41_943_040),
+  EBOOK_GRANT_TTL_DAYS: z.coerce.number().int().positive().max(365).default(30),
 })
 
 const parsed = environmentSchema.safeParse(process.env)

@@ -50,3 +50,19 @@ services:
         value: 3
       - key: CONTACT_NOTIFICATION_EMAIL
         sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        value: su7zhqoe
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: CLOUDINARY_UPLOAD_PRESET
+        value: edyndigital_hub
+      - key: CLOUDINARY_EBOOK_FOLDER
+        value: edyndigitalhub/ebooks
+      - key: CLOUDINARY_DOWNLOAD_TTL_SECONDS
+        value: 300
+      - key: CLOUDINARY_MAX_UPLOAD_BYTES
+        value: 41943040
+      - key: EBOOK_GRANT_TTL_DAYS
+        value: 30

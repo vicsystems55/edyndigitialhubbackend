@@ -6,6 +6,7 @@ import { env } from './config/env.js'
 import { errorHandler, notFound } from './middleware/error-handler.js'
 import { requestId } from './middleware/request-id.js'
 import { apiRouter } from './routes/index.js'
+import { paystackWebhook } from './routes/paystack-webhook.js'
 
 export const app = express()
 
@@ -48,6 +49,11 @@ app.use(rateLimit({
 
 // The Paystack webhook will be mounted before express.json() so its raw body
 // remains available for HMAC SHA-512 signature verification.
+app.post(
+  `${env.API_PREFIX}/payments/webhook`,
+  express.raw({ type: 'application/json', limit: '1mb' }),
+  paystackWebhook,
+)
 app.use(express.json({ limit: '1mb' }))
 app.use(express.urlencoded({ extended: false, limit: '100kb' }))
 

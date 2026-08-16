@@ -78,6 +78,35 @@ describe('API application', () => {
     expect(ordersResponse.status).toBe(401)
   })
 
+  it('protects contact message and newsletter management', async () => {
+    const { app } = await import('./app.js')
+    const messagesResponse = await request(app).get('/api/v1/admin/communications/messages')
+    const subscribersResponse = await request(app).get('/api/v1/admin/communications/subscribers')
+
+    expect(messagesResponse.status).toBe(401)
+    expect(subscribersResponse.status).toBe(401)
+  })
+
+  it('rejects malformed contact enquiries', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/communications/contact')
+      .send({ name: '', email: 'not-an-email', message: 'short' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+  })
+
+  it('requires a full name and valid email for newsletter subscriptions', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/communications/newsletter/subscribe')
+      .send({ name: '', email: 'not-an-email' })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+  })
+
   it('allows Vite development origins when the local port changes', async () => {
     const { app } = await import('./app.js')
     const response = await request(app)

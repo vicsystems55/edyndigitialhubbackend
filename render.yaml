@@ -50,6 +50,14 @@ services:
         value: 3
       - key: CONTACT_NOTIFICATION_EMAIL
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: RESEND_FROM_EMAIL
+        sync: false
+      - key: RESEND_REPLY_TO
+        sync: false
+      - key: API_PUBLIC_URL
+        sync: false
       - key: CLOUDINARY_CLOUD_NAME
         value: su7zhqoe
       - key: CLOUDINARY_API_KEY

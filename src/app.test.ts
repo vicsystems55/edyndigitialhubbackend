@@ -69,6 +69,15 @@ describe('API application', () => {
     expect(uploadResponse.status).toBe(401)
   })
 
+  it('protects live dashboard and order data', async () => {
+    const { app } = await import('./app.js')
+    const overviewResponse = await request(app).get('/api/v1/admin/dashboard/overview')
+    const ordersResponse = await request(app).get('/api/v1/admin/dashboard/orders')
+
+    expect(overviewResponse.status).toBe(401)
+    expect(ordersResponse.status).toBe(401)
+  })
+
   it('allows Vite development origins when the local port changes', async () => {
     const { app } = await import('./app.js')
     const response = await request(app)

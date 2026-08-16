@@ -3,6 +3,7 @@ import { prisma } from '../config/prisma.js'
 import { ApiError } from '../middleware/error-handler.js'
 import type { VerifiedTransaction } from './paystack.js'
 import { ensureDownloadGrantForOrder } from './download-grants.js'
+import { sendPurchaseEmail } from './email.js'
 
 export function validatePaidTransaction(order: Order, transaction: VerifiedTransaction) {
   if (transaction.reference !== order.reference) throw new ApiError(409, 'Payment reference mismatch')
@@ -49,6 +50,35 @@ export async function recordSuccessfulPayment(
     return paidOrder
   })
 
-  await ensureDownloadGrantForOrder(updatedOrder.id)
+  const downloadAccess = await ensureDownloadGrantForOrder(updatedOrder.id)
+  if (order.status !== 'PAID' && downloadAccess) {
+    try {
+      const email = await sendPurchaseEmail({
+        orderId: updatedOrder.id,
+        reference: updatedOrder.reference,
+        customerName: updatedOrder.customerName,
+        customerEmail: updatedOrder.customerEmail,
+        bookTitle: downloadAccess.book.title,
+        amountMinor: updatedOrder.amountMinor,
+        currency: updatedOrder.currency,
+        downloadToken: downloadAccess.token,
+        expiresAt: downloadAccess.grant.expiresAt,
+        maxDownloads: downloadAccess.grant.maxDownloads,
+      })
+      if (email.sent) {
+        await prisma.order.update({
+          where: { id: updatedOrder.id },
+          data: { receiptEmailSentAt: new Date(), receiptEmailId: email.id || null, receiptEmailError: null },
+        })
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown email delivery error'
+      console.error(`Purchase email failed for order ${updatedOrder.reference}:`, error)
+      await prisma.order.update({
+        where: { id: updatedOrder.id },
+        data: { receiptEmailError: message.slice(0, 1000) },
+      }).catch(() => undefined)
+    }
+  }
   return updatedOrder
 }

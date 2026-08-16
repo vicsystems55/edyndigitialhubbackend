@@ -38,7 +38,7 @@ export async function ensureDownloadGrantForOrder(orderId: string) {
     },
   })
 
-  return { token, grant }
+  return { token, grant, book: order.book }
 }
 
 export async function consumeDownloadGrant(token: string) {

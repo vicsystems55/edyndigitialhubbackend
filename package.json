@@ -33,6 +33,7 @@
     "jose": "latest",
     "multer": "^2.2.0",
     "pg": "latest",
+    "resend": "^6.20.0",
     "zod": "latest"
   },
   "devDependencies": {

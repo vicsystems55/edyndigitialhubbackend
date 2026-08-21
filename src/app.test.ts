@@ -128,7 +128,7 @@ describe('API application', () => {
     expect(response.body.success).toBe(false)
   })
 
-  it('accepts only Paystack as the checkout provider', async () => {
+  it('rejects unsupported checkout providers', async () => {
     const { app } = await import('./app.js')
     const response = await request(app)
       .post('/api/v1/payments/initialize')
@@ -138,6 +138,16 @@ describe('API application', () => {
         customerEmail: 'customer@example.com',
         paymentProvider: 'stripe',
       })
+
+    expect(response.status).toBe(400)
+    expect(response.body.success).toBe(false)
+  })
+
+  it('rejects malformed PayPal capture requests', async () => {
+    const { app } = await import('./app.js')
+    const response = await request(app)
+      .post('/api/v1/payments/paypal/capture')
+      .send({ reference: '', paypalOrderId: '' })
 
     expect(response.status).toBe(400)
     expect(response.body.success).toBe(false)

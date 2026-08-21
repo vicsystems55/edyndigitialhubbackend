@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { ApiError } from '../middleware/error-handler.js'
+import { paypalConfigured } from '../services/paypal.js'
 
 export const publicationsRouter = Router()
 
@@ -16,6 +17,7 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
         shortDescription: true,
         priceMinor: true,
         currency: true,
+        paypalPriceMinor: true,
         status: true,
         purchasesEnabled: true,
         downloadsEnabled: true,
@@ -35,12 +37,17 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
         shortDescription: book.shortDescription,
         priceMinor: book.priceMinor,
         currency: book.currency,
+        paypalPriceMinor: book.paypalPriceMinor,
         status: book.status,
         purchasesEnabled: book.purchasesEnabled,
         downloadsEnabled: book.downloadsEnabled,
-        paymentProvider: 'paystack',
-        canPurchase: book.purchasesEnabled && book.downloadsEnabled
-          && Boolean(book.ebookAssetId) && book.priceMinor !== null && book.priceMinor > 0,
+        paymentProviders: {
+          paystack: { enabled: book.priceMinor !== null && book.priceMinor > 0, priceMinor: book.priceMinor, currency: book.currency },
+          paypal: { enabled: paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0, priceMinor: book.paypalPriceMinor, currency: 'USD' },
+        },
+        canPurchase: book.purchasesEnabled && book.downloadsEnabled && Boolean(book.ebookAssetId)
+          && ((book.priceMinor !== null && book.priceMinor > 0)
+            || (paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0)),
       },
     })
   } catch (error) {

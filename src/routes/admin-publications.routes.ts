@@ -22,6 +22,7 @@ const upload = multer({
 const updateSchema = z.object({
   priceMinor: z.number().int().positive().nullable().optional(),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).optional(),
+  paypalPriceMinor: z.number().int().positive().nullable().optional(),
   purchasesEnabled: z.boolean().optional(),
   downloadsEnabled: z.boolean().optional(),
   featured: z.boolean().optional(),
@@ -49,7 +50,7 @@ adminPublicationsRouter.get('/', async (_request, response, next) => {
       orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
       select: {
         id: true, slug: true, title: true, author: true, status: true, featured: true,
-        priceMinor: true, currency: true, purchasesEnabled: true, downloadsEnabled: true,
+        priceMinor: true, currency: true, paypalPriceMinor: true, purchasesEnabled: true, downloadsEnabled: true,
         ebookProvider: true, ebookAssetId: true, ebookFormat: true, ebookBytes: true,
         ebookOriginalName: true, ebookUploadedAt: true, updatedAt: true,
       },

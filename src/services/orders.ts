@@ -1,11 +1,20 @@
 import type { Order } from '../generated/prisma/client.js'
 import { prisma } from '../config/prisma.js'
 import { ApiError } from '../middleware/error-handler.js'
-import type { VerifiedTransaction } from './paystack.js'
 import { ensureDownloadGrantForOrder } from './download-grants.js'
 import { sendPurchaseEmail } from './email.js'
 
-export function validatePaidTransaction(order: Order, transaction: VerifiedTransaction) {
+export type VerifiedPaymentTransaction = {
+  id: number | string
+  status: string
+  reference: string
+  amount: number
+  currency: string
+  paid_at?: string | null
+  providerOrderId?: string
+}
+
+export function validatePaidTransaction(order: Order, transaction: VerifiedPaymentTransaction) {
   if (transaction.reference !== order.reference) throw new ApiError(409, 'Payment reference mismatch')
   if (transaction.amount !== order.amountMinor) throw new ApiError(409, 'Payment amount mismatch')
   if (transaction.currency.toUpperCase() !== order.currency.toUpperCase()) {
@@ -15,10 +24,11 @@ export function validatePaidTransaction(order: Order, transaction: VerifiedTrans
 
 export async function recordSuccessfulPayment(
   order: Order,
-  transaction: VerifiedTransaction,
+  transaction: VerifiedPaymentTransaction,
   eventKey: string,
   eventType: string,
   payload: object,
+  provider: 'PAYSTACK' | 'PAYPAL' = 'PAYSTACK',
 ) {
   validatePaidTransaction(order, transaction)
   if (transaction.status !== 'success') return order
@@ -28,7 +38,10 @@ export async function recordSuccessfulPayment(
       where: { id: order.id },
       data: {
         status: 'PAID',
-        paystackTransactionId: String(transaction.id),
+        paymentProvider: provider,
+        providerOrderId: transaction.providerOrderId || order.providerOrderId,
+        providerTransactionId: String(transaction.id),
+        paystackTransactionId: provider === 'PAYSTACK' ? String(transaction.id) : order.paystackTransactionId,
         paidAt: transaction.paid_at ? new Date(transaction.paid_at) : new Date(),
       },
     })

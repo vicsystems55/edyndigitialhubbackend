@@ -4,6 +4,7 @@ import { prisma } from '../config/prisma.js'
 import { requireAdmin } from '../middleware/admin-auth.js'
 import { ApiError } from '../middleware/error-handler.js'
 import { emailDeliveryConfigured } from '../services/email.js'
+import { paypalConfigured } from '../services/paypal.js'
 
 export const adminDashboardRouter = Router()
 adminDashboardRouter.use(requireAdmin)
@@ -68,7 +69,7 @@ adminDashboardRouter.get('/overview', async (_request, response, next) => {
           comingSoon: comingSoonBooks,
           downloads: downloadTotals._sum.downloadCount || 0,
         },
-        integrations: { resend: emailDeliveryConfigured(), paystack: true },
+        integrations: { resend: emailDeliveryConfigured(), paystack: true, paypal: paypalConfigured() },
         traffic: [...trafficMap].map(([date, views]) => ({ date, views })),
         recentOrders: recentOrders.map((order) => ({
           id: order.id,
@@ -79,6 +80,7 @@ adminDashboardRouter.get('/overview', async (_request, response, next) => {
           amountMinor: order.amountMinor,
           currency: order.currency,
           status: order.status,
+          paymentProvider: order.paymentProvider,
           paidAt: order.paidAt,
           receiptEmailSentAt: order.receiptEmailSentAt,
           receiptEmailError: order.receiptEmailError,

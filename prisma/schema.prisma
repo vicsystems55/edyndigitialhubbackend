@@ -28,6 +28,11 @@ enum OrderStatus {
   REFUNDED
 }
 
+enum PaymentProvider {
+  PAYSTACK
+  PAYPAL
+}
+
 enum MessageStatus {
   UNREAD
   READ
@@ -74,6 +79,7 @@ model Book {
   ebookUploadedAt   DateTime?
   priceMinor        Int?
   currency          String     @default("NGN") @db.VarChar(3)
+  paypalPriceMinor  Int?
   status            BookStatus @default(DRAFT)
   featured          Boolean    @default(false)
   purchasesEnabled  Boolean    @default(false)
@@ -96,6 +102,9 @@ model Order {
   bookId                String          @db.Uuid
   amountMinor           Int
   currency              String          @default("NGN") @db.VarChar(3)
+  paymentProvider       PaymentProvider @default(PAYSTACK)
+  providerOrderId       String?
+  providerTransactionId String?
   status                OrderStatus     @default(PENDING)
   paystackTransactionId String?
   receiptEmailSentAt    DateTime?
@@ -111,6 +120,7 @@ model Order {
   @@index([customerEmail])
   @@index([bookId, status])
   @@index([createdAt])
+  @@index([paymentProvider, providerOrderId])
 }
 
 model PaymentEvent {

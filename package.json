@@ -18,7 +18,9 @@
     "prisma:migrate:dev": "prisma migrate dev",
     "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:seed": "tsx prisma/seed.ts",
+    "data:reset:preview": "tsx src/scripts/reset-live-data.ts",
+    "data:reset:confirm": "tsx src/scripts/reset-live-data.ts --confirm-reset-live-data"
   },
   "dependencies": {
     "@prisma/adapter-pg": "latest",

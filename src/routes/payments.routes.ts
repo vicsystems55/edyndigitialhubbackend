@@ -8,6 +8,7 @@ import { ApiError } from '../middleware/error-handler.js'
 import { initializePaystackTransaction, verifyPaystackTransaction } from '../services/paystack.js'
 import { recordSuccessfulPayment } from '../services/orders.js'
 import { ensureDownloadGrantForOrder } from '../services/download-grants.js'
+import { internationalPaymentsEnabled } from '../services/payment-settings.js'
 import { capturePayPalOrder, createPayPalOrder, paypalConfigured } from '../services/paypal.js'
 
 export const paymentsRouter = Router()
@@ -45,6 +46,7 @@ paymentsRouter.post('/initialize', paymentLimiter, async (request, response, nex
     const amountMinor = isPayPal ? book.paypalPriceMinor : book.priceMinor
     const currency = isPayPal ? 'USD' : book.currency
     if (!amountMinor || amountMinor < 1) throw new ApiError(409, `${isPayPal ? 'PayPal' : 'Paystack'} pricing is not available`)
+    if (isPayPal && !(await internationalPaymentsEnabled())) throw new ApiError(409, 'International payments are currently unavailable')
     if (isPayPal && !paypalConfigured()) throw new ApiError(503, 'PayPal is not currently available')
 
     const reference = `EDYN-${Date.now()}-${randomBytes(6).toString('hex')}`

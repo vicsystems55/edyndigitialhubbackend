@@ -7,6 +7,8 @@ import { prisma } from '../config/prisma.js'
 import { requireAdmin } from '../middleware/admin-auth.js'
 import { ApiError } from '../middleware/error-handler.js'
 import { deleteEbook, uploadEbook } from '../services/cloudinary-ebooks.js'
+import { INTERNATIONAL_PAYMENTS_SETTING_KEY, internationalPaymentsEnabled } from '../services/payment-settings.js'
+import { paypalConfigured } from '../services/paypal.js'
 
 export const adminPublicationsRouter = Router()
 adminPublicationsRouter.use(requireAdmin)
@@ -25,6 +27,7 @@ const updateSchema = z.object({
   paypalPriceMinor: z.number().int().positive().nullable().optional(),
   purchasesEnabled: z.boolean().optional(),
   downloadsEnabled: z.boolean().optional(),
+  internationalPaymentsEnabled: z.boolean().optional(),
   featured: z.boolean().optional(),
 })
 
@@ -46,7 +49,7 @@ function runUpload(request: Request, response: Response, next: NextFunction) {
 
 adminPublicationsRouter.get('/', async (_request, response, next) => {
   try {
-    const books = await prisma.book.findMany({
+    const [books, internationalEnabled] = await Promise.all([prisma.book.findMany({
       orderBy: [{ featured: 'desc' }, { createdAt: 'asc' }],
       select: {
         id: true, slug: true, title: true, author: true, status: true, featured: true,
@@ -54,8 +57,18 @@ adminPublicationsRouter.get('/', async (_request, response, next) => {
         ebookProvider: true, ebookAssetId: true, ebookFormat: true, ebookBytes: true,
         ebookOriginalName: true, ebookUploadedAt: true, updatedAt: true,
       },
+    }), internationalPaymentsEnabled()])
+    response.json({
+      success: true,
+      data: {
+        books,
+        settings: {
+          internationalPaymentsEnabled: internationalEnabled,
+          paypalConfigured: paypalConfigured(),
+          paypalEnvironment: env.PAYPAL_ENV,
+        },
+      },
     })
-    response.json({ success: true, data: { books } })
   } catch (error) { next(error) }
 })
 
@@ -67,18 +80,46 @@ adminPublicationsRouter.patch('/:slug', async (request, response, next) => {
 
     const existing = await prisma.book.findUnique({ where: { slug } })
     if (!existing) throw new ApiError(404, 'Publication was not found')
+    const {
+      internationalPaymentsEnabled: internationalEnabled,
+      ...bookSettings
+    } = parsed.data
+    const effectivePrice = parsed.data.priceMinor === undefined ? existing.priceMinor : parsed.data.priceMinor
+    const effectivePaypalPrice = parsed.data.paypalPriceMinor === undefined ? existing.paypalPriceMinor : parsed.data.paypalPriceMinor
+    const effectiveDownloads = parsed.data.downloadsEnabled === undefined ? existing.downloadsEnabled : parsed.data.downloadsEnabled
+
     if (parsed.data.downloadsEnabled && !existing.ebookAssetId) {
       throw new ApiError(409, 'Upload the ebook before enabling downloads')
     }
-    if (parsed.data.purchasesEnabled && !(parsed.data.priceMinor || existing.priceMinor)) {
+    if (parsed.data.purchasesEnabled && !effectivePrice) {
       throw new ApiError(409, 'Set a valid price before enabling purchases')
     }
-    if (parsed.data.purchasesEnabled && (!existing.ebookAssetId || parsed.data.downloadsEnabled === false)) {
+    if (parsed.data.purchasesEnabled && (!existing.ebookAssetId || !effectiveDownloads)) {
       throw new ApiError(409, 'Upload the ebook and enable downloads before enabling purchases')
     }
+    if (internationalEnabled && !effectivePaypalPrice) {
+      throw new ApiError(409, 'Set a valid PayPal USD price before enabling international payments')
+    }
+    if (internationalEnabled && !paypalConfigured()) {
+      throw new ApiError(409, 'Configure PayPal credentials before enabling international payments')
+    }
 
-    const book = await prisma.book.update({ where: { id: existing.id }, data: parsed.data })
-    await prisma.auditLog.create({ data: { adminId: request.admin!.id, action: 'PUBLICATION_UPDATED', resourceType: 'Book', resourceId: book.id, metadata: { slug: book.slug } } })
+    const book = await prisma.$transaction(async (transaction) => {
+      const updatedBook = await transaction.book.update({ where: { id: existing.id }, data: bookSettings })
+      if (internationalEnabled !== undefined) {
+        await transaction.siteSetting.upsert({
+          where: { key: INTERNATIONAL_PAYMENTS_SETTING_KEY },
+          update: { value: internationalEnabled },
+          create: {
+            key: INTERNATIONAL_PAYMENTS_SETTING_KEY,
+            value: internationalEnabled,
+            description: 'Shows and authorizes PayPal checkout for international customers.',
+          },
+        })
+      }
+      await transaction.auditLog.create({ data: { adminId: request.admin!.id, action: 'PUBLICATION_UPDATED', resourceType: 'Book', resourceId: updatedBook.id, metadata: { slug: updatedBook.slug, internationalPaymentsEnabled: internationalEnabled } } })
+      return updatedBook
+    })
     response.json({ success: true, data: { book } })
   } catch (error) { next(error) }
 })

@@ -124,6 +124,16 @@ async function main() {
       description: 'Globally enables or disables book purchasing.',
     },
   })
+
+  await prisma.siteSetting.upsert({
+    where: { key: 'international_payments_enabled' },
+    update: {},
+    create: {
+      key: 'international_payments_enabled',
+      value: false,
+      description: 'Shows and authorizes PayPal checkout for international customers.',
+    },
+  })
 }
 
 main()

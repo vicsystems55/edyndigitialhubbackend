@@ -1,13 +1,14 @@
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { ApiError } from '../middleware/error-handler.js'
+import { internationalPaymentsEnabled } from '../services/payment-settings.js'
 import { paypalConfigured } from '../services/paypal.js'
 
 export const publicationsRouter = Router()
 
 publicationsRouter.get('/:slug', async (request, response, next) => {
   try {
-    const book = await prisma.book.findUnique({
+    const [book, internationalEnabled] = await Promise.all([prisma.book.findUnique({
       where: { slug: request.params.slug },
       select: {
         slug: true,
@@ -23,7 +24,7 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
         downloadsEnabled: true,
         ebookAssetId: true,
       },
-    })
+    }), internationalPaymentsEnabled()])
 
     if (!book || book.status !== 'PUBLISHED') throw new ApiError(404, 'Publication was not found')
 
@@ -43,11 +44,11 @@ publicationsRouter.get('/:slug', async (request, response, next) => {
         downloadsEnabled: book.downloadsEnabled,
         paymentProviders: {
           paystack: { enabled: book.priceMinor !== null && book.priceMinor > 0, priceMinor: book.priceMinor, currency: book.currency },
-          paypal: { enabled: paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0, priceMinor: book.paypalPriceMinor, currency: 'USD' },
+          paypal: { enabled: internationalEnabled && paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0, priceMinor: book.paypalPriceMinor, currency: 'USD' },
         },
         canPurchase: book.purchasesEnabled && book.downloadsEnabled && Boolean(book.ebookAssetId)
           && ((book.priceMinor !== null && book.priceMinor > 0)
-            || (paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0)),
+            || (internationalEnabled && paypalConfigured() && book.paypalPriceMinor !== null && book.paypalPriceMinor > 0)),
       },
     })
   } catch (error) {
